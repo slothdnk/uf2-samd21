@@ -78,8 +78,9 @@ static const struct TextFile info[] = {
     {.name = "INFO_UF2TXT", .content = infoUf2File},
 #if USE_INDEX_HTM
     {.name = "INDEX   HTM", .content = indexFile},
-#endif
     {.name = "CURRENT UF2"},
+#endif
+    {.name = "SERIAL  TXT", .content = "Serial: 1234567812345678\r\n"},
 };
 #define NUM_FILES (sizeof(info) / sizeof(info[0]))
 #define NUM_DIRENTRIES (NUM_FILES + 1) // Code adds volume label as first root directory entry
@@ -193,21 +194,47 @@ void read_block(uint32_t block_no, uint8_t *data) {
         if (sectionIdx < NUM_FILES - 1) {
             memcpy(data, info[sectionIdx].content, strlen(info[sectionIdx].content));
         } else {
-            sectionIdx -= NUM_FILES - 1;
-            uint32_t addr = sectionIdx * 256;
-            if (addr < FLASH_SIZE) {
-                UF2_Block *bl = (void *)data;
-                bl->magicStart0 = UF2_MAGIC_START0;
-                bl->magicStart1 = UF2_MAGIC_START1;
-                bl->magicEnd = UF2_MAGIC_END;
-                bl->blockNo = sectionIdx;
-                bl->numBlocks = FLASH_SIZE / 256;
-                bl->targetAddr = addr;
-                bl->payloadSize = 256;
-                bl->flags |= UF2_FLAG_FAMILYID_PRESENT;
-                bl->familyID = UF2_FAMILY;
-                memcpy(bl->data, (void *)addr, bl->payloadSize);
-            }
+        	if(sectionIdx < NUM_FILES) {
+        	    uint8_t uid[16];
+        	    uid[0]  = (0x0000000F & (*(int *)(0x0080A044)))       + 0x30;
+        	    uid[1]  = (0x0000000F & (*(int *)(0x0080A044) >> 4))  + 0x30;
+        	    uid[2]  = (0x0000000F & (*(int *)(0x0080A044) >> 8))  + 0x30;
+        	    uid[3]  = (0x0000000F & (*(int *)(0x0080A044) >> 12)) + 0x30;
+        	    uid[4]  = (0x0000000F & (*(int *)(0x0080A044) >> 16)) + 0x30;
+        	    uid[5]  = (0x0000000F & (*(int *)(0x0080A044) >> 20)) + 0x30;
+        	    uid[6]  = (0x0000000F & (*(int *)(0x0080A044) >> 24)) + 0x30;
+        	    uid[7]  = (0x0000000F & (*(int *)(0x0080A044) >> 28)) + 0x30;
+        	    uid[8]  = (0x0000000F & (*(int *)(0x0080A048)))       + 0x30;
+        	    uid[9]  = (0x0000000F & (*(int *)(0x0080A048) >> 4))  + 0x30;
+        	    uid[10] = (0x0000000F & (*(int *)(0x0080A048) >> 8))  + 0x30;
+        	    uid[11] = (0x0000000F & (*(int *)(0x0080A048) >> 12)) + 0x30;
+        	    uid[12] = (0x0000000F & (*(int *)(0x0080A048) >> 16)) + 0x30;
+        	    uid[13] = (0x0000000F & (*(int *)(0x0080A048) >> 20)) + 0x30;
+        	    uid[14] = (0x0000000F & (*(int *)(0x0080A048) >> 24)) + 0x30;
+        	    uid[15] = (0x0000000F & (*(int *)(0x0080A048) >> 28)) + 0x30;
+
+        		const char *txt = "EV_EUI: ";
+        		const char *txtend = "\r\n";
+        		memcpy(data, txt, strlen(txt));
+        		memcpy(data + strlen(txt), uid, 16);
+        		memcpy(data + strlen(txt) + 16, txtend, strlen(txtend));
+
+        		sectionIdx -= NUM_FILES - 1;
+        	};
+//            uint32_t addr = sectionIdx * 256;
+//            if (addr < FLASH_SIZE) {
+//                UF2_Block *bl = (void *)data;
+//                bl->magicStart0 = UF2_MAGIC_START0;
+//                bl->magicStart1 = UF2_MAGIC_START1;
+//                bl->magicEnd = UF2_MAGIC_END;
+//                bl->blockNo = sectionIdx;
+//                bl->numBlocks = FLASH_SIZE / 256;
+//                bl->targetAddr = addr;
+//                bl->payloadSize = 256;
+//                bl->flags |= UF2_FLAG_FAMILYID_PRESENT;
+//                bl->familyID = UF2_FAMILY;
+//                memcpy(bl->data, (void *)addr, bl->payloadSize);
+//            }
         }
     }
 #endif

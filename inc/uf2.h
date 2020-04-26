@@ -48,15 +48,15 @@
 // Enable reading flash via FAT files; otherwise drive will appear empty
 #define USE_FAT 1 // 272 bytes
 // Enable index.htm file on the drive
-#define USE_INDEX_HTM 1 // 132 bytes
+#define USE_INDEX_HTM 0 // 132 bytes
 // Enable USB CDC (Communication Device Class; i.e., USB serial) monitor for Arduino style flashing
-#define USE_CDC 1 // 1264 bytes (plus terminal, see below)
+#define USE_CDC 0 // 1264 bytes (plus terminal, see below)
 // Support the UART (real serial port, not USB)
 #define USE_UART 0
 // Support Human Interface Device (HID) - serial, flashing and debug
 #define USE_HID 1 // 788 bytes
 // Expose HID via WebUSB
-#define USE_WEBUSB 1
+#define USE_WEBUSB 0
 // Doesn't yet disable code, just enumeration
 #define USE_MSC 1
 
@@ -70,7 +70,7 @@
 // will start the app. This only happens if the app says it wants that (see SINGLE_RESET() below).
 // If disabled here or by the app, the bootloader will only start with double-click of the reset
 // button.
-#define USE_SINGLE_RESET 1
+//#define USE_SINGLE_RESET 1
 
 // Fine-tuning of features
 #define USE_HID_SERIAL 0   // just an example, not really needed; 36 bytes

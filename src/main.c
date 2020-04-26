@@ -90,6 +90,20 @@ extern int8_t led_tick_step;
 #define RESET_CONTROLLER RSTC
 #endif
 
+
+#define initInput(port, pin) { \
+	PORT->Group[port].DIRCLR.reg = (1 << pin); \
+	PORT->Group[port].PINCFG[pin].reg |= PORT_PINCFG_PULLEN; \
+	PORT->Group[port].OUTCLR.reg = (1 << pin); \
+	PORT->Group[port].PINCFG[pin].reg |= PORT_PINCFG_INEN; \
+}
+
+#define PORTA PORT->Group[0]
+#define PA24 (1 << 24)
+#define PA25 (1 << 25)
+#define BOOT_TAP_PTR ((uint32_t *)(FLASH_SIZE-FLASH_ROW_SIZE))
+void flash_erase_row(uint32_t *dst);
+
 /**
  * \brief Check the application startup condition
  *
@@ -122,15 +136,46 @@ static void check_start_application(void) {
     }
 #endif
 
-    if (RESET_CONTROLLER->RCAUSE.bit.POR) {
+    initInput(0, PIN_PA24);
+    initInput(0, PIN_PA25);
+
+    PINOP(PIN_PA17, DIRSET);
+    PINOP(PIN_PA18, DIRSET);
+    PINOP(PIN_PA19, DIRSET);
+    bool pin1 = false;
+    bool pin2 = false;
+    for(int a=0;a<20;a++){
+    	uint32_t input_reg = PORTA.IN.reg;
+    	pin1 = (input_reg & PA24) == PA24;
+    	pin2 = (input_reg & PA25) == PA25;
+    	delay(10);
+    	if(pin1)
+    		PINOP(PIN_PA17, OUTSET);
+    	else
+    		PINOP(PIN_PA17, OUTCLR);
+    	if(pin2)
+    		PINOP(PIN_PA18, OUTSET);
+    	else
+    		PINOP(PIN_PA18, OUTCLR);
+    	PINOP(PIN_PA19, OUTTGL);
+    }
+    if (*BOOT_TAP_PTR == DBL_TAP_MAGIC) {
+    	flash_erase_row(BOOT_TAP_PTR);
+    	return; // stay in bootloader
+    } else if(pin1 && pin2) {
+    	uint32_t magic[FLASH_ROW_SIZE/4];
+    	magic[0] = DBL_TAP_MAGIC;
+    	flash_write_row(BOOT_TAP_PTR, magic);
+    	return;// stay in bootloader
+    } else if (RESET_CONTROLLER->RCAUSE.bit.POR) {
         *DBL_TAP_PTR = 0;
     } else if (*DBL_TAP_PTR == DBL_TAP_MAGIC) {
         *DBL_TAP_PTR = 0;
         return; // stay in bootloader
-    } else {
+    }  else {
         if (*DBL_TAP_PTR != DBL_TAP_MAGIC_QUICK_BOOT) {
             *DBL_TAP_PTR = DBL_TAP_MAGIC;
-            delay(500);
+            delay(5000);
         }
         *DBL_TAP_PTR = 0;
     }
@@ -177,6 +222,10 @@ int main(void) {
     assert(8 << NVMCTRL->PARAM.bit.PSZ == FLASH_PAGE_SIZE);
     assert(FLASH_PAGE_SIZE * NVMCTRL->PARAM.bit.NVMP == FLASH_SIZE);
 
+    // not enumerated yet
+    RGBLED_set_color(COLOR_START);
+    led_tick_step = 10;
+
     /* Jump in application if condition is satisfied */
     check_start_application();
 
@@ -195,10 +244,6 @@ int main(void) {
     logmsg("Before main loop");
 
     usb_init();
-
-    // not enumerated yet
-    RGBLED_set_color(COLOR_START);
-    led_tick_step = 10;
 
     /* Wait for a complete enum on usb or a '#' char on serial line */
     while (1) {
