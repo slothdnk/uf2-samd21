@@ -213,6 +213,11 @@ void read_block(uint32_t block_no, uint8_t *data) {
         	    uid[14] = (0x0000000F & (*(int *)(0x0080A048) >> 24)) + 0x30;
         	    uid[15] = (0x0000000F & (*(int *)(0x0080A048) >> 28)) + 0x30;
 
+        	    for(int a=0; a<15;a++) {
+        	    	if(uid[a]>0x39)
+        	    		uid[a]+=7;
+        	    }
+
         		const char *txt = "EV_EUI: ";
         		const char *txtend = "\r\n";
         		memcpy(data, txt, strlen(txt));
